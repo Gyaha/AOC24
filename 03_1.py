@@ -8,6 +8,6 @@ with open("Input/03.txt") as f:
 # print(re.findall('mul\(([0-9]+),([0-9]+)\)', data))
 t = 0
 for match in re.finditer('mul\(([0-9]+),([0-9]+)\)', data):
-    a, b = map(int, match.groups())
+    a,b = int(match.group(1)), int(match.group(2))
     t += a * b
 print(t)
