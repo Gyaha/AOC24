@@ -56,7 +56,6 @@ data = data.split('\n')
 gates = {}
 
 for line in data:
-    print(line)
     if ':' in line:
         id, value = line.split(': ')
         gates[id] = ('literal', int(value), None)
@@ -102,9 +101,4 @@ def translate_gate(key):
 t = '0b'
 for key in gates_starting_with_z:
     t += str(translate_gate(key))
-    print(f'{key}: {translate_gate(key)}')
-print(t)
 print(int(t, base=0))
-
-# print(gates)
-# print(gates_starting_with_z)
