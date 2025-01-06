@@ -1,14 +1,6 @@
-# Looks like this has to be done with a recursive find all.
-# That is too slow, so I will try to do it with a iterative find all.
-# Still too slow.
-# I will try with finding junctions and then find all paths from there.
-# That failed as well.
-# Now I will try recursive plus caching.
-# Still too slow. Tried then to find all paths, planning to sort after. Also too slow.
-# Will try the junction approach again.
-
-# Okay this is looking good, but I have a bit of a problem with the cost calculation.
-# I have to give up on this for now. Will come back to it later.
+# Holy smokes, this was hard.
+# Guess it was just adding a lowest cost seen to every position (from position to position)
+# and then checking if the cost was higher than the lowest cost seen.
 
 data = """#################
 #...#...#...#..E#
@@ -38,15 +30,33 @@ WALL = '#'
 START = 'S'
 END = 'E'
 
+# region Map control
+
+
 def get_tile(_map, position):
     x, y = position
     if x < 0 or x >= len(_map[0]) or y < 0 or y >= len(_map):
         return WALL
     return _map[y][x]
 
+
+def is_solid(_map, position):
+    return get_tile(_map, position) == WALL
+
+
 def set_tile(_map, position, value):
     x, y = position
     _map[y] = _map[y][:x] + value + _map[y][x+1:]
+
+
+def print_map(_map, positions=[], marker='O'):
+    _map = _map.copy()
+    for x, y in positions:
+        set_tile(_map, (x, y), marker)
+    print('\n'.join(_map))
+
+
+# endregion
 
 # region Find start and end
 start = None
@@ -61,115 +71,117 @@ for y in range(len(_map)):
             set_tile(_map, end, EMPTY)
 # endregion
 
-def get_neighbors(position, direction):
+# region Find neighbors
+
+
+def get_neighbors(position):
+    """Returns a list of all empty neighbors of a position"""
     x, y = position
-    if direction == 'N':
-        return [((x, y-1), 'N'), 
-                ((x+1, y), 'E'), 
-                ((x-1, y), 'W')]
-    if direction == 'E':
-        return [((x+1, y), 'E'), 
-                ((x, y+1), 'S'),
-                ((x, y-1), 'N')]
-    if direction == 'S':
-        return [((x, y+1), 'S'), 
-                ((x+1, y), 'E'), 
-                ((x-1, y), 'W')]
-    if direction == 'W':
-        return [((x-1, y), 'W'), 
-                ((x, y+1), 'S'), 
-                ((x, y-1), 'N')]
-    print('Error: Invalid direction')
+    neighbors = []
+    for pos in [(x, y-1), (x+1, y), (x-1, y), (x, y+1)]:
+        if get_tile(_map, pos) == EMPTY:
+            neighbors.append(pos)
+    return neighbors
 
-def print_map(_map, positions = [], marker = 'O'):
-    _map = _map.copy()
-    for x, y in positions:
-        set_tile(_map, (x, y), marker)
-    print('\n'.join(_map))
 
-def find_junction_positions(_map):
-    junctions = []
-    for y in range(len(_map)):
-        for x in range(len(_map[y])):
-            if get_tile(_map, (x, y)) == EMPTY:
-                neighbors = 0
-                for dx, dy in [(0, -1), (1, 0), (0, 1), (-1, 0)]:
-                    if get_tile(_map, (x+dx, y+dy)) == EMPTY:
-                        neighbors += 1
-                if neighbors > 2:
-                    junctions.append((x, y))
-    return junctions
-
-junction_positions = [start, end] + find_junction_positions(_map)
-
-print_map(_map, junction_positions, 'J')
-
-def get_all_neighbors(position):
+def get_neighbor_costs(position, previous):
+    """Returns a list of all empty neighbors of a position and turning costs"""
     x, y = position
-    return [((x, y-1), 'N'), 
-            ((x+1, y), 'E'), 
-            ((x, y+1), 'S'),
-            ((x-1, y), 'W')]
+    north = (x, y-1)
+    east = (x+1, y)
+    south = (x, y+1)
+    west = (x-1, y)
+    neighbors = []
+    if position[0] == previous[0]:  # horizontal
+        if position[1] > previous[1]:  # south
+            # print('South')
+            if not is_solid(_map, south):
+                neighbors.append((south, 1))
+            if not is_solid(_map, east):
+                neighbors.append((east, 1000))
+            if not is_solid(_map, west):
+                neighbors.append((west, 1000))
+        else:  # north
+            # print('North')
+            if not is_solid(_map, north):
+                neighbors.append((north, 1))
+            if not is_solid(_map, east):
+                neighbors.append((east, 1000))
+            if not is_solid(_map, west):
+                neighbors.append((west, 1000))
+    else:  # vertical
+        if position[0] > previous[0]:  # east
+            # print('East')
+            if not is_solid(_map, east):
+                neighbors.append((east, 1))
+            if not is_solid(_map, north):
+                neighbors.append((north, 1000))
+            if not is_solid(_map, south):
+                neighbors.append((south, 1000))
+        else:  # west
+            # print('West')
+            if not is_solid(_map, west):
+                neighbors.append((west, 1))
+            if not is_solid(_map, north):
+                neighbors.append((north, 1000))
+            if not is_solid(_map, south):
+                neighbors.append((south, 1000))
+    return neighbors
 
-def find_junction_connection(position, direction, cost = 0):
-    if get_tile(_map, position) == WALL:
-        return None
-    if position in junction_positions:
-        return position, direction, cost
-    for new_position, new_direction in get_neighbors(position, direction):
-        new_cost = cost + 1 + (direction != new_direction) * 1000
-        connection = find_junction_connection(new_position, new_direction, new_cost)
-        if connection:
-            return connection
-    return None
+# endregion
 
-def find_junction_connections(junction_position):
-    connections = []
-    for position, direction in get_all_neighbors(junction_position):
-        connection = find_junction_connection(position, direction)
-        if connection:
-            connections.append((direction,connection))
-    return connections
+# region Find junctions
 
-junctions = {}
-for junction_position in junction_positions:
-    junctions[junction_position] = find_junction_connections(junction_position)
-    
-for junction_position in junctions:
-    print(junction_position, '->', junctions[junction_position])
-    #print_map(_map, [junction_position] + junctions[junction_position], 'X')
 
-def get_allowed_directions(direction):
-    if direction == 'N':
-        return ['N', 'E', 'W']
-    if direction == 'E':
-        return ['E', 'S', 'N']
-    if direction == 'S':
-        return ['S', 'E', 'W']
-    if direction == 'W':
-        return ['W', 'S', 'N']
-    print('Error: Invalid direction:', direction)
-    quit()
+def is_junction(map, position):
+    if is_solid(map, position):
+        return False
+    return len(get_neighbors(position)) > 2
 
-def find_path(position, direction, cost = 0, path = [], visited = set()):
-    if position == end:
-        return path, cost
-    visited.add(position)
-    allowed_directions = get_allowed_directions(direction)
-    for start_direction, (new_position, new_direction, new_cost) in junctions[position]:
-        if start_direction not in allowed_directions:
+# endregion
+
+
+position_lowest_cost = {}
+# ((x,y),(x,y)): lowest_cost
+paths = []
+queue = [(start, (start[0]-1, start[1]), 0, set())]
+
+while queue:
+    current, previous, cost, visited = queue.pop(0)
+    # print('Current:', current, 'Previous:', previous, 'Cost:', cost, 'Visited:', len(visited))
+    visited.add(current)
+
+    if current == end:
+        # print('End found:', cost)
+        paths.append((cost, visited))
+        continue
+
+    is_first = True
+    for neighbor_position, neighbor_cost in get_neighbor_costs(current, previous):
+        if neighbor_position in visited:
             continue
-        if new_position in visited:
-            continue
-        new_path, new_cost = find_path(new_position, new_direction, cost + new_cost, path + [(new_position, new_direction)], visited)
-        
-        if new_path:
-            new_cost += 1
-            if start_direction != direction:
-                new_cost += 1000
-            return new_path, new_cost
-    return None, None
-    
+        if not is_junction(_map, neighbor_position):
+            if neighbor_position in position_lowest_cost:
+                if cost + neighbor_cost > position_lowest_cost[neighbor_position]:
+                    continue
+                position_lowest_cost[neighbor_position] = cost + neighbor_cost
+            else:
+                position_lowest_cost[neighbor_position] = cost + neighbor_cost
 
-path = find_path(start, 'E')
-print(path)
+        if is_first:
+            is_first = False
+        else:
+            visited = visited.copy()
+
+        queue.append((neighbor_position, current, cost + neighbor_cost, visited))
+
+
+paths.sort(key=lambda x: x[0])
+lowest_cost = paths[0][0]
+all_positions = set()
+for cost, path in paths:
+    if cost > lowest_cost:
+        break
+    all_positions.update(path)
+# print_map(_map, all_positions, 'O')
+print(len(all_positions))
