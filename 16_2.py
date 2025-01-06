@@ -160,6 +160,7 @@ while queue:
     for neighbor_position, neighbor_cost in get_neighbor_costs(current, previous):
         if neighbor_position in visited:
             continue
+        # Have to check for junctions here, because the corner cost messes with the cost calculation
         if not is_junction(_map, neighbor_position):
             if neighbor_position in position_lowest_cost:
                 if cost + neighbor_cost > position_lowest_cost[neighbor_position]:
@@ -167,7 +168,7 @@ while queue:
                 position_lowest_cost[neighbor_position] = cost + neighbor_cost
             else:
                 position_lowest_cost[neighbor_position] = cost + neighbor_cost
-
+        # This is so that the visited set is not shared between paths and we can reuse the first visited set
         if is_first:
             is_first = False
         else:
