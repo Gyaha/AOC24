@@ -1,7 +1,12 @@
+output_cache = {
+    # abc: (a, b, c, pointer, output)
+    # (0, 0, 0): (0, 0, 0, 0, 0),
+}
+
+
 class Computer():
-    def __init__(self, a, b, c, program, test_output=False):
+    def __init__(self, a, b, c, program):
         self.reset(a, b, c, program)
-        self.test_output = test_output
 
     def reset(self, a, b, c, program):
         self.a = a
@@ -24,7 +29,13 @@ class Computer():
         quit()
 
     def run(self):
+        initial_a = self.a
         while self.pointer < len(self.program):
+            if self.pointer == 0:
+                if self.a in output_cache:
+                    self.output += output_cache[self.a]
+                    break
+
             opcode = self.program[self.pointer]
             # print('opcode:', opcode)
             if opcode == 0:
@@ -66,6 +77,7 @@ class Computer():
                 after this instruction."""
                 # print('jnz')
                 if self.a == 0:
+                    output_cache[initial_a] = self.output
                     self.pointer += 2
                     continue
                 operand = self.program[self.pointer + 1]
@@ -86,14 +98,9 @@ class Computer():
                 outputs multiple values, they are separated by commas.)"""
                 # print('out')
                 operand = self.get_combo(self.program[self.pointer + 1])
-                self.output.append((operand % 8))
+                out = operand % 8
+                self.output.append(out)
                 self.pointer += 2
-                if self.test_output:
-                    if self.output[len(self.output)-1] != self.program[len(self.output)-1]:
-                        # print('Output does not match program')
-                        # print(self.output)
-                        # print(self.program)
-                        break
                 continue
             elif opcode == 6:
                 """The bdv instruction (opcode 6) works exactly 
@@ -119,16 +126,35 @@ class Computer():
             print('Unknown opcode')
             quit()
 
+
+a = 0
+b = 0
+c = 0
+program = [2, 4, 1, 1, 7, 5, 0, 3, 4, 7, 1, 6, 5, 5, 3, 0]
+
+computer = Computer(a, b, c, program)
+l = 0
+while True:
+    if a % 100000 == 0:
+        print(a)
+    target = program[:l+1]
+    computer.reset(a, b, c, program)
+    computer.run()
+    if computer.output == target:
+        print('Match:', l+1, a)
+        l += 1
+        print('New target:', program[:l+1])
+        continue
+    a += 1
+
+quit()
 # Edge up close to length of program (16)
-
-
 program = [2, 4, 1, 1, 7, 5, 0, 3, 4, 7, 1, 6, 5, 5, 3, 0]
 a = 35184371922204  # This is from previous testing
 a = 35184387400000  # This is from previous testing
 a = 35184396600000  # This is from previous testing
 a = 35184551200000  # This is from previous testing
 a = 35185887900000  # This is from previous testing
-a = 35186827000000  # This is from previous testing
 move_by = 1
 computer = Computer(a, 0, 0, program)
 while True:
