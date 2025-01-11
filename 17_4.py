@@ -4,6 +4,8 @@
 
 # But I did see that the output is 'slow' in the end
 
+# Well it works now, check the cache_fix() and iter_fix_index() for more info.
+
 program = [2, 4,  # b = a % 8
            1, 1,  # b = b ^ 1
            7, 5,  # c = a // (2 ^ b)
@@ -17,6 +19,7 @@ cache = {}
 
 
 def rec_run(a):
+    # Run the program on a simple function
     if a in cache:
         return cache[a]
     initial_a = a
@@ -33,66 +36,78 @@ def rec_run(a):
     return out
 
 
-# Find the first number that matches the length of the program
-
-a = 0
-move_by = 0
-while True:
-    moved_by = pow(2, move_by)
-    print(a, '->', a + moved_by)
-    a += moved_by
-    out = rec_run(a)
-    if len(out) == len(program):
-        if move_by == 0:
-            break
-        a -= moved_by
-        print(a, '<-', a + moved_by)
-        move_by = 0
-    else:
-        move_by += 1
-
-print(a)
-
-
 def find_lowest_where(a, action):
+    # Find the first number that (ACTION) is True
     b = 0
     move_by = 0
     while True:
         moved_by = pow(2, move_by)
-        print(b, '->', b + moved_by)
+        # print(b, '->', b + moved_by)
         b += moved_by
         out = rec_run(a + b)
         if action(out):
             if move_by == 0:
                 break
             b -= moved_by
-            print(b, '<-', b + moved_by)
+            # print(b, '<-', b + moved_by)
             move_by = 0
         else:
             move_by += 1
     return b
 
 
-a_0 = find_lowest_where(0, lambda x: len(x) == len(program))
-a_0_output = rec_run(a)
+# region Cache Fix
+# This is the number added to change the output at that index.
+# This is first found by finding the lowest number that changes the output at that index.
+# But then I saw a pattern and just set that to the cache_fix.
+# Basically pow(2,(index + 3)).
+# Then divide by 1024 to make it skip less numbers.
+# This is NOT perfect, but it works.
+cache_fix = {}
+zero = find_lowest_where(0, lambda x: len(x) == len(program))
+zero_output = rec_run(zero)
+result = zero
+for i in range(1, len(program)+1):
+    index = len(zero_output)-i
+    # print('i:', index)
+    cache_fix[index] = find_lowest_where(zero, lambda x: x[index] != zero_output[index])
+# print(cache_fix)
 
-a_1 = find_lowest_where(a_0, lambda x: x[len(x)-1] != a_0_output[len(a_0_output)-1])
-a_2 = find_lowest_where(a_0, lambda x: x[len(x)-2] != a_0_output[len(a_0_output)-2])
-a_3 = find_lowest_where(a_0, lambda x: x[len(x)-3] != a_0_output[len(a_0_output)-3])
-a_4 = find_lowest_where(a_0, lambda x: x[len(x)-4] != a_0_output[len(a_0_output)-4])
-a_5 = find_lowest_where(a_0, lambda x: x[len(x)-5] != a_0_output[len(a_0_output)-5])
-a_6 = find_lowest_where(a_0, lambda x: x[len(x)-6] != a_0_output[len(a_0_output)-6])
-a_7 = find_lowest_where(a_0, lambda x: x[len(x)-7] != a_0_output[len(a_0_output)-7])
-a_8 = find_lowest_where(a_0, lambda x: x[len(x)-8] != a_0_output[len(a_0_output)-8])
+d = 0
+for i in range(1, 47, 3):
+    # print(d, '\t', cache_fix[d])
+    # print(i, '\t', pow(2, i))
+    cache_fix[d] = pow(2, i) // 1024
+    d += 1
+cache_fix[0] = 1
+cache_fix[1] = 1
+cache_fix[2] = 1
+# endregion
 
-print(a_0)
-print(a_1)
-print(a_2)
-print(a_3)
-print(a_4)
-print(a_5)
-print(a_6)
-print(a_7)
-print(a_8)
 
-print(find_lowest_where(0, lambda x: len(x) == len(program)-3))
+def iter_fix_index(a, program=program):
+    # Travels from back to front and tries to match the output and program.
+    # If it does not match, it adds the cache_fix to the number.
+    # Then it checks from the start again.
+    last_index = len(program)-1
+    index = last_index
+    while rec_run(a) != program:
+        b = cache_fix[index]
+        # print(rec_run(a))
+        if rec_run(a)[index] != program[index]:
+            a += b
+            print(rec_run(a))
+            index = last_index
+            continue
+        if index == 0:
+            return a
+        index -= 1
+    return a
+
+
+zero = find_lowest_where(0, lambda x: len(x) == len(program))
+result = iter_fix_index(zero, program)
+print()
+print(rec_run(result))
+print(program)
+print(result)
