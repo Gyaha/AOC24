@@ -1,3 +1,7 @@
+# Well this does do the thing...
+# But it would take way to long to run.
+
+
 from itertools import permutations
 
 data = """x00: 0
@@ -20,8 +24,8 @@ x03 AND y03 -> z03
 x04 AND y04 -> z04
 x05 AND y05 -> z00"""
 
-with open('Input/24.txt', 'r') as file:
-    data = file.read()
+# with open('Input/24.txt', 'r') as file:
+#    data = file.read()
 
 data = data.split('\n')
 
@@ -76,6 +80,13 @@ def keys_to_numbers(keys, gates):
     return int(b, base=0)
 
 
+def number_to_keys(number, keys, gates):
+    b = bin(number)[2:]
+    b = '0' * (len(keys) - len(b)) + b
+    for i, key in enumerate(keys):
+        gates[key] = ('literal', int(b[i]), None)
+
+
 def swap_gates(gates, a, b):
     key_a = gates[a]
     key_b = gates[b]
@@ -84,8 +95,19 @@ def swap_gates(gates, a, b):
     gates[b] = key_a
 
 
-def try_tests(original_gates, swaps):
+def set_inputs(gates, x, y):
+    x_gates = [key for key in gates if key.startswith('x')]
+    x_gates.sort(reverse=True)
+    number_to_keys(x, x_gates, gates)
+    y_gates = [key for key in gates if key.startswith('y')]
+    y_gates.sort(reverse=True)
+    number_to_keys(y, y_gates, gates)
+
+
+def try_tests(original_gates, swaps, x, y):
     gates = original_gates.copy()
+
+    set_inputs(gates, x, y)
 
     for a, b in swaps:
         swap_gates(gates, a, b)
@@ -102,8 +124,8 @@ def try_tests(original_gates, swaps):
     z_gates.sort(reverse=True)
     number_3 = keys_to_numbers(z_gates, gates)
 
-    print(number_1, '+', number_2, '=', number_3)
-    return number_1 & number_2 == number_3
+    # print(number_1, '+', number_2, '=', number_3)
+    return number_1 + number_2 == number_3
 
 
 def try_swaps(original_gates, swaps):
@@ -124,17 +146,26 @@ def try_swaps(original_gates, swaps):
     z_gates.sort(reverse=True)
     number_3 = keys_to_numbers(z_gates, gates)
 
-    print(number_1, '+', number_2, '=', number_3)
-    return number_1 & number_2 == number_3
+    # print(number_1, '+', number_2, '=', number_3)
+    return number_1 + number_2 == number_3
 
 
 all_gates = list(original_gates.keys())
 
+i = 0
 for p in permutations(all_gates, 8):
+    i += 1
+    if i % 10000 == 0:
+        print(sorted(p))
     try:
-        if try_swaps(original_gates, [(p[0], p[1]), (p[2], p[3]), (p[4], p[5]), (p[6], p[7])]):
-            print('works', p)
-            quit()
+        swaps = [(p[0], p[1]), (p[2], p[3]), (p[4], p[5]), (p[6], p[7])]
+        if try_swaps(original_gates, swaps):
+            if try_tests(original_gates, swaps, 10, 20) and try_tests(original_gates, swaps, 20, 10) and try_tests(original_gates, swaps, 12, 21) and try_tests(original_gates, swaps, 21, 12):
+                print('Works')
+                print(','.join(sorted(p)))
+                break
+            else:
+                pass
     except:
         pass
 
