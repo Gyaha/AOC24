@@ -92,6 +92,10 @@ class Door():
         return [self.get_wire(wire) for wire in wires]
 
 
+def get_wires_starting_with(wires, start):
+    return sorted([w for w in wires if w.startswith(start)], reverse=True)
+
+
 def output_to_number(b: list):
     # Takes a list of 1s and 0s and returns the number
     b = ''.join(map(str, b))
@@ -107,7 +111,31 @@ def number_to_input(n: int, length: int):
     return list(map(int, b))
 
 
-d = Door(original_wires)
-d.set_wires(['x00', 'x01', 'x02', 'x03', 'x04', 'x05'], number_to_input(10, 6))
-d.set_wires(['y00', 'y01', 'y02', 'y03', 'y04', 'y05'], number_to_input(2, 6))
-print(output_to_number(d.get_wires(['z00', 'z01', 'z02', 'z03', 'z04', 'z05'])))
+door = Door(original_wires)
+
+x_wires = get_wires_starting_with(original_wires, 'x')
+y_wires = get_wires_starting_with(original_wires, 'y')
+z_wires = get_wires_starting_with(original_wires, 'z')
+
+for i in range(len(x_wires)):
+    door.set_wires(x_wires, number_to_input(0, len(x_wires)))
+    door.set_wires(y_wires, number_to_input(0, len(y_wires)))
+    for j in range(2):
+        x_wire = x_wires[i]
+        y_wire = y_wires[i]
+        z_wire = z_wires[i]
+        door.set_wire(x_wire, j)
+        door.set_wire(y_wire, j)
+        print(door.get_wire(z_wire))
+    print()
+
+quit()
+
+for i in range(4):
+    for j in range(4):
+        k = i + j
+        # print(i, j, k)
+        print()
+        print(i, bin(i)[2:].zfill(3))
+        print(j, bin(j)[2:].zfill(3))
+        print(k, bin(k)[2:].zfill(3))
