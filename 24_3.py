@@ -1,3 +1,7 @@
+from itertools import combinations, permutations, product
+import sys
+sys.setrecursionlimit(100)
+
 data = """x00: 0
 x01: 1
 x02: 0
@@ -18,8 +22,8 @@ x03 AND y03 -> z03
 x04 AND y04 -> z04
 x05 AND y05 -> z00"""
 
-# with open('Input/24.txt', 'r') as file:
-#    data = file.read()
+with open('Input/24.txt', 'r') as file:
+    data = file.read()
 
 
 data = data.split('\n')
@@ -63,6 +67,8 @@ class Door():
         self.wires[wire] = ('literal', value, None)
 
     def set_wires(self, wires, values):
+        if len(wires) != len(values):
+            raise Exception('Length mismatch')
         for wire, value in zip(wires, values):
             self.set_wire(wire, value)
 
@@ -92,10 +98,6 @@ class Door():
         return [self.get_wire(wire) for wire in wires]
 
 
-def get_wires_starting_with(wires, start):
-    return sorted([w for w in wires if w.startswith(start)], reverse=True)
-
-
 def output_to_number(b: list):
     # Takes a list of 1s and 0s and returns the number
     b = ''.join(map(str, b))
@@ -111,31 +113,100 @@ def number_to_input(n: int, length: int):
     return list(map(int, b))
 
 
+def get_wires_starting_with(wires, start):
+    return sorted([w for w in wires if w.startswith(start)])
+
+
+def wire_number(xyz, number):
+    return xyz + str(number).zfill(2)
+
+
+def test_wire(number, door):
+    # Can't test wire 0
+    if number == 0:
+        return True
+
+    x_wire_prev = wire_number('x', number - 1)
+    y_wire_prev = wire_number('y', number - 1)
+
+    x_wire = wire_number('x', number)
+    y_wire = wire_number('y', number)
+
+    z_wire = wire_number('z', number)
+
+    z_wire_next = wire_number('z', number + 1)
+
+    # First test the x and y wires
+    door.set_wire(x_wire, 0)
+    door.set_wire(y_wire, 0)
+    if door.get_wire(z_wire) != 0:
+        return False
+    if door.get_wire(z_wire_next) != 0:
+        return False
+
+    door.set_wire(x_wire, 1)
+    door.set_wire(y_wire, 0)
+    if door.get_wire(z_wire) != 1:
+        return False
+    if door.get_wire(z_wire_next) != 0:
+        return False
+
+    door.set_wire(x_wire, 0)
+    door.set_wire(y_wire, 1)
+    if door.get_wire(z_wire) != 1:
+        return False
+    if door.get_wire(z_wire_next) != 0:
+        return False
+
+    door.set_wire(x_wire, 1)
+    door.set_wire(y_wire, 1)
+    if door.get_wire(z_wire) != 0:
+        return False
+    if door.get_wire(z_wire_next) != 1:
+        return False
+
+    door.set_wire(x_wire, 0)
+    door.set_wire(y_wire, 0)
+
+    # Now test previous xy wires
+    door.set_wire(x_wire_prev, 0)
+    door.set_wire(y_wire_prev, 0)
+    if door.get_wire(z_wire) != 0:
+        return False
+
+    door.set_wire(x_wire_prev, 1)
+    door.set_wire(y_wire_prev, 0)
+    if door.get_wire(z_wire) != 0:
+        return False
+
+    door.set_wire(x_wire_prev, 0)
+    door.set_wire(y_wire_prev, 1)
+    if door.get_wire(z_wire) != 0:
+        return False
+
+    door.set_wire(x_wire_prev, 1)
+    door.set_wire(y_wire_prev, 1)
+    if door.get_wire(z_wire) != 1:
+        return False
+
+    door.set_wire(x_wire_prev, 0)
+    door.set_wire(y_wire_prev, 0)
+
+
 door = Door(original_wires)
 
+all_wires = list(original_wires.keys())
 x_wires = get_wires_starting_with(original_wires, 'x')
 y_wires = get_wires_starting_with(original_wires, 'y')
 z_wires = get_wires_starting_with(original_wires, 'z')
+all_non_xy_wires = [w for w in all_wires if w not in x_wires and w not in y_wires]
+
+
+door.set_wires(x_wires, number_to_input(0, len(x_wires)))
+door.set_wires(y_wires, number_to_input(0, len(y_wires)))
 
 for i in range(len(x_wires)):
     door.set_wires(x_wires, number_to_input(0, len(x_wires)))
     door.set_wires(y_wires, number_to_input(0, len(y_wires)))
-    for j in range(2):
-        x_wire = x_wires[i]
-        y_wire = y_wires[i]
-        z_wire = z_wires[i]
-        door.set_wire(x_wire, j)
-        door.set_wire(y_wire, j)
-        print(door.get_wire(z_wire))
-    print()
-
-quit()
-
-for i in range(4):
-    for j in range(4):
-        k = i + j
-        # print(i, j, k)
-        print()
-        print(i, bin(i)[2:].zfill(3))
-        print(j, bin(j)[2:].zfill(3))
-        print(k, bin(k)[2:].zfill(3))
+    if test_wire(i, door) is False:
+        print(f'Failed test for wire {i}')
